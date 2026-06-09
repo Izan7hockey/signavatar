@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignAvatar — LSE</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#0d0f18;color:#eef0ff;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.5rem;background:rgba(13,15,24,.97);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.logo-icon{width:32px;height:32px;background:#4361EE;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.layout{display:flex;flex:1;overflow:hidden;min-height:0}
+.av-panel{width:55%;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.av-bg{position:absolute;inset:0;background:linear-gradient(135deg,#0d9488,#0891b2 50%,#0284c7)}
+#av-canvas{position:relative;z-index:2;display:block}
+.subtitles{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:1rem;background:linear-gradient(transparent,rgba(0,0,0,.85));min-height:80px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+.sub-orig{font-size:15px;color:#fff;text-align:center;min-height:22px;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.sub-trans{font-size:14px;color:#fde68a;text-align:center;font-weight:500;min-height:20px;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.sign-ind{position:absolute;top:1rem;right:1rem;z-index:10;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.5);padding:5px 10px;border-radius:20px;font-size:12px;color:#fff;opacity:0;transition:opacity .3s}
+.sign-ind.vis{opacity:1}
+.si-dot{width:7px;height:7px;border-radius:50%;background:#2DC653;animation:sip 1s infinite}
+@keyframes sip{0%,100%{opacity:1}50%{opacity:.3}}
+.cur-sign{position:absolute;top:1rem;left:1rem;z-index:10;width:52px;height:52px;border-radius:50%;background:rgba(67,97,238,.9);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;transition:all .12s;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.ctrl{flex:1;display:flex;flex-direction:column;padding:1.1rem;gap:.85rem;overflow-y:auto;background:#161924;border-left:1px solid rgba(255,255,255,.07)}
+.sec{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#4a526e;margin-bottom:.35rem}
+.status-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e2235;border:1px solid rgba(255,255,255,.07);border-radius:10px;font-size:13px;color:#8892b0}
+.sdot{width:7px;height:7px;border-radius:50%;background:#4a526e;flex-shrink:0;transition:all .2s}
+.sdot.ready{background:#4361EE}
+.sdot.mic{background:#E24B4A;animation:dp 1s infinite}
+.sdot.sign{background:#2DC653}
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.3}}
+.txt-area{width:100%;background:#1e2235;border:1px solid rgba(255,255,255,.07);border-radius:10px;color:#eef0ff;font-size:15px;padding:10px 13px;resize:none;font-family:inherit;outline:none;transition:border-color .12s;line-height:1.5}
+.txt-area:focus{border-color:rgba(67,97,238,.5)}
+.txt-area::placeholder{color:#4a526e}
+.btn-row{display:flex;gap:8px}
+.btn{flex:1;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:#1e2235;color:#eef0ff;font-size:14px;font-weight:500;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:rgba(67,97,238,.2);border-color:rgba(67,97,238,.4)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:#4361EE;border-color:#4361EE;color:#fff}
+.btn.primary:hover{background:#5572f5}
+.mic-btn{width:100%;padding:14px;border-radius:10px;border:2px solid rgba(255,255,255,.07);background:#1e2235;color:#eef0ff;font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px}
+.mic-btn:hover{border-color:rgba(226,75,74,.4)}
+.mic-btn.on{background:rgba(226,75,74,.12);border-color:#E24B4A;color:#E24B4A;box-shadow:0 0 20px rgba(226,75,74,.2)}
+.transcript{background:#1e2235;border:1px solid rgba(67,97,238,.3);border-radius:10px;padding:9px 12px;font-size:14px;color:#eef0ff;font-style:italic;display:none;line-height:1.5;min-height:38px}
+.speed-row{display:flex;align-items:center;gap:10px}
+.speed-row label{font-size:13px;color:#8892b0;flex-shrink:0}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:#1e2235;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#4361EE;cursor:pointer}
+.spd-val{font-size:13px;color:#7B8CFF;min-width:68px;text-align:right}
+.spell-row{display:flex;flex-wrap:wrap;gap:4px;min-height:28px}
+.sl{width:26px;height:26px;border-radius:5px;background:#1e2235;border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#4a526e;transition:all .1s}
+.sl.act{background:#4361EE;border-color:#4361EE;color:#fff;transform:scale(1.2)}
+.sl.done{background:rgba(45,198,83,.1);border-color:rgba(45,198,83,.28);color:#2DC653}
+.sl.sp{background:transparent;border:1px dashed rgba(255,255,255,.07);color:#4a526e;font-size:8px}
+.prog-track{width:100%;height:2px;background:#1e2235;border-radius:1px}
+.prog-fill{height:100%;background:#4361EE;border-radius:1px;transition:width .12s;width:0%}
+.phrases{display:flex;flex-direction:column;gap:5px}
+.phr{padding:8px 12px;border-radius:9px;background:#1e2235;border:1px solid rgba(255,255,255,.07);color:#8892b0;font-size:13px;cursor:pointer;transition:all .12s;text-align:left;display:flex;align-items:center;gap:8px}
+.phr:hover{background:rgba(67,97,238,.12);color:#eef0ff;border-color:rgba(67,97,238,.3)}
+.warn{padding:8px 12px;background:rgba(244,162,97,.08);border:1px solid rgba(244,162,97,.2);border-radius:9px;font-size:12px;color:#F4A261;line-height:1.5}
+@media(max-width:700px){.layout{flex-direction:column}.av-panel{width:100%;height:52vh}.ctrl{overflow-y:auto}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon">🤟</div>SignAvatar</div>
+  <span style="font-size:12px;color:#4a526e">LSE — Demo educativa</span>
+</header>
+<div class="layout">
+  <div class="av-panel">
+    <div class="av-bg"></div>
+    <canvas id="av-canvas"></canvas>
+    <div class="cur-sign" id="cur-sign">—</div>
+    <div class="sign-ind" id="sign-ind"><div class="si-dot"></div><span>Signando</span></div>
+    <div class="subtitles">
+      <div class="sub-orig" id="sub-orig"></div>
+      <div class="sub-trans" id="sub-trans"></div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <div class="status-bar"><div class="sdot ready" id="sdot"></div><span id="stxt">Listo — escribe o habla</span></div>
+    <div>
+      <div class="sec">Escribe una frase</div>
+      <textarea class="txt-area" id="txt-in" rows="3" placeholder="Ej: Hola, ¿cómo estás?"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();doSpell()}"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="doSpell()">▶ Deletrear</button>
+      <button class="btn" onclick="stopAll()">■ Detener</button>
+      <button class="btn" onclick="repeatLast()">↺ Repetir</button>
+    </div>
+    <div>
+      <div class="sec">O habla directamente</div>
+      <button class="mic-btn" id="mic-btn" onclick="toggleMic()">
+        <span id="mic-icon">🎤</span><span id="mic-lbl">Pulsa para hablar</span>
+      </button>
+      <div class="transcript" id="transcript"></div>
+    </div>
+    <div>
+      <div class="sec">Velocidad</div>
+      <div class="speed-row">
+        <label>Lento</label>
+        <input type="range" min="1" max="5" value="3" step="1" oninput="setSpd(this.value)">
+        <span class="spd-val" id="spd-val">Normal</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Progreso</div>
+      <div class="spell-row" id="sp-row"></div>
+      <div class="prog-track" style="margin-top:6px"><div class="prog-fill" id="prog"></div></div>
+    </div>
+    <div>
+      <div class="sec">Frases rápidas</div>
+      <div class="phrases">
+        <button class="phr" onclick="quick('HOLA')">👋 Hola</button>
+        <button class="phr" onclick="quick('BUENOS DIAS')">🌅 Buenos días</button>
+        <button class="phr" onclick="quick('GRACIAS')">🙏 Gracias</button>
+        <button class="phr" onclick="quick('ME LLAMO PEDRO')">👤 Me llamo Pedro</button>
+        <button class="phr" onclick="quick('COMO ESTAS')">💬 ¿Cómo estás?</button>
+        <button class="phr" onclick="quick('NECESITO AYUDA')">🆘 Necesito ayuda</button>
+        <button class="phr" onclick="quick('NO ENTIENDO')">❓ No entiendo</button>
+        <button class="phr" onclick="quick('REPITE POR FAVOR')">🔁 Repite, por favor</button>
+      </div>
+    </div>
+    <div class="warn">⚠️ Herramienta educativa. No sustituye a un intérprete profesional.</div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
